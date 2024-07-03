@@ -28,7 +28,7 @@ type (
 	Peer struct {
 		// First to ensure 64-bit alignment for atomics. See #262.
 		_stats ConnStats
-		mu    sync.RWMutex
+		mu     sync.RWMutex
 
 		t *Torrent
 
@@ -305,7 +305,7 @@ func (cn *Peer) iterContiguousPieceRequests(f func(piece pieceIndex, count int),
 }
 
 func (cn *Peer) writeStatus(w io.Writer, lock bool, lockTorrent bool) {
-
+	panic(2)
 	if lockTorrent {
 		cn.t.mu.RLock()
 		defer cn.t.mu.RUnlock()
