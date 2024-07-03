@@ -13,9 +13,7 @@ import (
 	"net/url"
 	"runtime"
 	"sort"
-	"strings"
 	"sync/atomic"
-	"text/tabwriter"
 	"time"
 	"unsafe"
 
@@ -31,6 +29,7 @@ import (
 	"github.com/anacrolix/missinggo/v2/pubsub"
 	"github.com/anacrolix/multiless"
 	"github.com/anacrolix/sync"
+	stack2 "github.com/go-stack/stack"
 	"github.com/pion/datachannel"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
@@ -854,7 +853,8 @@ func (t *Torrent) writeStatus(w io.Writer) {
 		t.imu.RLock()
 		defer t.imu.RUnlock()
 
-		fmt.Fprintf(w, "Infohash: %s\n", t.infoHash.HexString())
+		stack := stack2.Trace().TrimBelow(stack2.Caller(1)).String()
+		fmt.Fprintf(w, "Infohash: %s, %s\n", t.infoHash.HexString(), stack)
 		fmt.Fprintf(w, "Metadata length: %d\n", t.metadataSize(false))
 		if !t.haveInfo(false) {
 			fmt.Fprintf(w, "Metadata have: ")
@@ -880,70 +880,70 @@ func (t *Torrent) writeStatus(w io.Writer) {
 				}
 			}(),
 		)
-		if t.haveInfo(false) {
-			func() {
-				t.imu.RUnlock()
-				defer t.imu.RLock()
+		//if t.haveInfo(false) {
+		//	func() {
+		//		t.imu.RUnlock()
+		//		defer t.imu.RLock()
+		//
+		//		fmt.Fprintf(w, "Num Pieces: %d (%d completed)\n", t.numPieces(false), t.numPiecesCompleted(false))
+		//		fmt.Fprintf(w, "Piece States: %s\n", t.pieceStateRuns(false))
+		//		// Generates a huge, unhelpful listing when piece availability is very scattered. Prefer
+		//		// availability frequencies instead.
+		//		if false {
+		//			fmt.Fprintf(w, "Piece availability: %v\n", strings.Join(func() (ret []string) {
+		//				for _, run := range t.pieceAvailabilityRuns(false) {
+		//					ret = append(ret, run.String())
+		//				}
+		//				return
+		//			}(), " "))
+		//		}
+		//		fmt.Fprintf(w, "Piece availability frequency: %v\n", strings.Join(
+		//			func() (ret []string) {
+		//				for avail, freq := range t.pieceAvailabilityFrequencies(false) {
+		//					if freq == 0 {
+		//						continue
+		//					}
+		//					ret = append(ret, fmt.Sprintf("%v: %v", avail, freq))
+		//				}
+		//				return
+		//			}(),
+		//			", "))
+		//	}()
+		//}
+		//fmt.Fprintf(w, "Reader Pieces:")
+		//t.forReaderOffsetPieces(func(begin, end pieceIndex) (again bool) {
+		//	fmt.Fprintf(w, " %d:%d", begin, end)
+		//	return true
+		//}, false)
+		//fmt.Fprintln(w)
+		//
+		//fmt.Fprintf(w, "Enabled trackers:\n")
+		//func() {
+		//	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		//	fmt.Fprintf(tw, "    URL\tExtra\n")
+		//	for _, ta := range slices.Sort(slices.FromMapElems(t.trackerAnnouncers), func(l, r torrentTrackerAnnouncer) bool {
+		//		lu := l.URL()
+		//		ru := r.URL()
+		//		var luns, runs url.URL = *lu, *ru
+		//		luns.Scheme = ""
+		//		runs.Scheme = ""
+		//		var ml missinggo.MultiLess
+		//		ml.StrictNext(luns.String() == runs.String(), luns.String() < runs.String())
+		//		ml.StrictNext(lu.String() == ru.String(), lu.String() < ru.String())
+		//		return ml.Less()
+		//	}).([]torrentTrackerAnnouncer) {
+		//		fmt.Fprintf(tw, "    %q\t%v\n", ta.URL(), ta.statusLine())
+		//	}
+		//	tw.Flush()
+		//}()
 
-				fmt.Fprintf(w, "Num Pieces: %d (%d completed)\n", t.numPieces(false), t.numPiecesCompleted(false))
-				fmt.Fprintf(w, "Piece States: %s\n", t.pieceStateRuns(false))
-				// Generates a huge, unhelpful listing when piece availability is very scattered. Prefer
-				// availability frequencies instead.
-				if false {
-					fmt.Fprintf(w, "Piece availability: %v\n", strings.Join(func() (ret []string) {
-						for _, run := range t.pieceAvailabilityRuns(false) {
-							ret = append(ret, run.String())
-						}
-						return
-					}(), " "))
-				}
-				fmt.Fprintf(w, "Piece availability frequency: %v\n", strings.Join(
-					func() (ret []string) {
-						for avail, freq := range t.pieceAvailabilityFrequencies(false) {
-							if freq == 0 {
-								continue
-							}
-							ret = append(ret, fmt.Sprintf("%v: %v", avail, freq))
-						}
-						return
-					}(),
-					", "))
-			}()
-		}
-		fmt.Fprintf(w, "Reader Pieces:")
-		t.forReaderOffsetPieces(func(begin, end pieceIndex) (again bool) {
-			fmt.Fprintf(w, " %d:%d", begin, end)
-			return true
-		}, false)
-		fmt.Fprintln(w)
+		//fmt.Fprintf(w, "DHT Announces: %d\n", t.numDHTAnnounces)
 
-		fmt.Fprintf(w, "Enabled trackers:\n")
-		func() {
-			tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-			fmt.Fprintf(tw, "    URL\tExtra\n")
-			for _, ta := range slices.Sort(slices.FromMapElems(t.trackerAnnouncers), func(l, r torrentTrackerAnnouncer) bool {
-				lu := l.URL()
-				ru := r.URL()
-				var luns, runs url.URL = *lu, *ru
-				luns.Scheme = ""
-				runs.Scheme = ""
-				var ml missinggo.MultiLess
-				ml.StrictNext(luns.String() == runs.String(), luns.String() < runs.String())
-				ml.StrictNext(lu.String() == ru.String(), lu.String() < ru.String())
-				return ml.Less()
-			}).([]torrentTrackerAnnouncer) {
-				fmt.Fprintf(tw, "    %q\t%v\n", ta.URL(), ta.statusLine())
-			}
-			tw.Flush()
-		}()
-
-		fmt.Fprintf(w, "DHT Announces: %d\n", t.numDHTAnnounces)
-
-		dumpStats(w, t.stats(false, false))
+		//dumpStats(w, t.stats(false, false))
 	}()
 
 	fmt.Fprintf(w, "webseeds:\n")
-	t.writePeerStatuses(w, t.webSeedsAsSlice(false), false)
+	//t.writePeerStatuses(w, t.webSeedsAsSlice(false), false)
 
 	peerConns := t.peerConnsAsSlice(false)
 	defer peerConns.free()
@@ -962,9 +962,9 @@ func (t *Torrent) writeStatus(w io.Writer) {
 	})
 
 	fmt.Fprintf(w, "%v peer conns:\n", len(peerConns))
-	t.writePeerStatuses(w, g.SliceMap(peerConns, func(pc *PeerConn) *Peer {
-		return &pc.Peer
-	}), false)
+	//t.writePeerStatuses(w, g.SliceMap(peerConns, func(pc *PeerConn) *Peer {
+	//	return &pc.Peer
+	//}), false)
 }
 
 func (t *Torrent) writePeerStatuses(w io.Writer, peers []*Peer, lockTorrent bool) {
