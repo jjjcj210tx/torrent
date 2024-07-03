@@ -1857,6 +1857,7 @@ func (cl *Client) locker() *lockWithDeferreds {
 }
 
 func (cl *Client) String() string {
+	panic(1)
 	return fmt.Sprintf("<%[1]T %[1]p>", cl)
 }
 
