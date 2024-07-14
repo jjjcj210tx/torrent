@@ -156,3 +156,4 @@ func mainErr() error {
 	}
 	return nil
 }
+go get github.com/anacrolix/torrent
